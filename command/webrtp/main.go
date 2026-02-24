@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"gopkg.in/yaml.v3"
 )
+
+//go:embed index.html
+var indexHTML []byte
+
+//go:embed index.css
+var indexCSS []byte
 
 var CLI struct {
 	Config    string `help:"Config file path" short:"c" default:"config.yml"`
@@ -294,6 +301,15 @@ func main() {
 			stats[i] = &streamStats
 		}
 		return c.JSON(webrtp.Status{Streams: stats})
+	})
+
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Type("html").Send(indexHTML)
+	})
+
+	app.Get("/index.css", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/css")
+		return c.Send(indexCSS)
 	})
 
 	// Start fiber server
