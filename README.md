@@ -2,14 +2,107 @@
 
 Golang library for streaming RTP packet from RTSP source directly to web in real-time.
 
+## Screenshot
+
+![WebRTP Dashboard](./resource/screenshot.png)
+
 ## Usage
 
-```go
-package main
+### Download Binary
 
-func main() {
+Download the latest release binary from [GitHub Releases](https://github.com/connectedtechco/go-webrtp/releases):
 
-}
+```bash
+# macOS (Apple Silicon)
+curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-arm64
+chmod +x webrtp
+
+# macOS (Intel)
+curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-amd64
+chmod +x webrtp
+
+# Linux
+curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-linux-amd64
+chmod +x webrtp
+```
+
+### Run Server
+
+Create a `config.yml` file:
+
+```yaml
+upstreams:
+  - name: camera1
+    rtspUrl: rtsp://192.168.1.100:554/stream
+```
+
+Run the server:
+
+```bash
+./webrtp -c config.yml
+```
+
+### Command Options
+
+```
+  -c, --config string    Config file path (default: config.yml)
+  -i, --interface       Use graphical interface (default: false)
+  -p, --port int        HTTP server port (default: 8080)
+```
+
+### Access Streams
+
+- Web UI: http://localhost:8080/
+- Stream by name: `ws://localhost:8080/stream/camera1`
+- Stream by number: `ws://localhost:8080/stream/no/0`
+
+## Libraries
+
+### JavaScript / TypeScript
+
+See [client/javascript](./client/javascript) for the JavaScript client library.
+
+```bash
+npm install @connectedtechco/webrtp
+```
+
+```javascript
+import { createClient } from '@connectedtechco/webrtp';
+
+const client = createClient('ws://localhost:8080/stream/no/0');
+client.render(document.getElementById('canvas'));
+
+client.onInfo((info) => {
+    console.log('Info:', info);
+});
+
+client.onFrame((frameNo, data, isKey) => {
+    console.log(`Frame ${frameNo}: ${data.byteLength} bytes, keyframe: ${isKey}`);
+});
+```
+
+### Python
+
+See [client/python](./client/python) for the Python client library.
+
+```bash
+cd client/python
+uv pip install -e .
+```
+
+```python
+from webrtp import WebRtpClient
+import cv2
+
+client = WebRtpClient("ws://localhost:8080/stream/no/0")
+
+# Get raw frame data with callback
+client.on_raw(lambda frame_no, data, is_key: print(f"Frame: {frame_no}, size: {len(data)}"))
+
+# Get decoded frame with callback
+client.on_frame(lambda frame_no, frame: cv2.imshow('video', frame))
+
+client.start()
 ```
 
 ## Development
@@ -21,8 +114,14 @@ func main() {
     openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -keyout .local/x509-key.pem -out .local/x509-cer.pem -days 365 -nodes -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
     ```
 
-2. Run example
+2. Build styles (run in background)
 
     ```bash
-    go run ./experiment/webtransport/main.go
+    sass --watch command/webrtp/index.scss:command/webrtp/index.css
+    ```
+
+3. Run the server
+
+    ```bash
+    go run ./command/webrtp/
     ```

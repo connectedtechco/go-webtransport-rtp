@@ -5,21 +5,22 @@ Python client library for receiving WebRTP video streams via WebSocket.
 ## Installation
 
 ```bash
-cd python
+cd client/python
 uv pip install -e .
 ```
 
 ## Usage
 
-### CV2 Client
+### With CV2 Display
 
 ```python
-from src.webrtp import WebRtpCv2Client
+from webrtp import WebRtpClient
 import cv2
 
-client = WebRtpCv2Client("ws://localhost:8080/stream/main")
+client = WebRtpClient("ws://localhost:8080/stream/no/0")
 
-client.on_frame(lambda frame_no, frame, is_key: print(f"Frame: {frame_no}"))
+# Get decoded frame with callback (cv2 numpy array)
+client.on_frame(lambda frame_no, frame: cv2.imshow('video', frame))
 
 client.start()
 
@@ -27,24 +28,47 @@ while True:
     cv2.waitKey(1)
 ```
 
-### Raw Client
+### Raw Frame Data
 
 ```python
-from src.webrtp import WebRtpClient
+from webrtp import WebRtpClient
 
-client = WebRtpClient("ws://localhost:8080/stream/main")
+client = WebRtpClient("ws://localhost:8080/stream/no/0")
 
+# Get raw frame data with callback
 client.on_raw(lambda frame_no, data, is_key: print(f"Frame: {frame_no}, size: {len(data)}"))
 
 client.start()
 ```
 
-## Examples
+## API
 
-```bash
-# Run CV2 example
-python main.py
+### WebRtpClient
 
-# Run raw example
-python main_raw.py
-```
+#### constructor(wsUrl: str)
+
+Create a new client instance.
+
+#### on_raw(callback: Callable[[int, bytes, bool], None]): self
+
+Set callback for raw frame data with frame number, raw bytes, and keyframe flag.
+
+#### on_frame(callback: Callable[[int, np.ndarray], None]): self
+
+Set callback for decoded frame with frame number and numpy array (BGR format).
+
+#### start(): self
+
+Start receiving frames.
+
+#### stop(): None
+
+Stop receiving frames and close connection.
+
+#### codec: Optional[str]
+
+Property to get the codec information.
+
+#### init_data: Optional[bytes]
+
+Property to get the initialization data.

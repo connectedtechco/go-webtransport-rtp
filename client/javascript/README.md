@@ -11,9 +11,9 @@ npm install @connectedtechco/webrtp
 ## Usage
 
 ```javascript
-import { WebRtpClient, createClient } from '@connectedtechco/webrtp';
+import { createClient } from '@connectedtechco/webrtp';
 
-const client = createClient('ws://localhost:8080/stream/main');
+const client = createClient('ws://localhost:8080/stream/no/0');
 
 // Render to canvas
 client.render(document.getElementById('canvas'));
@@ -28,8 +28,12 @@ client.onFrame((frameNo, data, isKey) => {
     console.log(`Frame ${frameNo}: ${data.byteLength} bytes, keyframe: ${isKey}`);
 });
 
-// Start receiving
-client.start();
+// Control playback
+client.play();
+client.pause();
+
+// Close connection when done
+client.close();
 ```
 
 ## API
