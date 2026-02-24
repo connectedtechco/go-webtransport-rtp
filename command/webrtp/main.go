@@ -24,10 +24,10 @@ import (
 )
 
 //go:embed index.html
-var indexHTML []byte
+var indexHtml []byte
 
 //go:embed index.css
-var indexCSS []byte
+var indexCss []byte
 
 var CLI struct {
 	Config    string `help:"Config file path" short:"c" default:"config.yml"`
@@ -46,11 +46,13 @@ type Upstream struct {
 
 type Stream struct {
 	Name    string
-	URL     string
+	Url     string
 	Inst    *webrtp.Instance
 	Hub     *webrtp.Hub
 	Handler fiber.Handler
 }
+
+type tickMsg struct{ time.Time }
 
 type Model struct {
 	streams  []*Stream
@@ -66,8 +68,6 @@ func (m *Model) Init() tea.Cmd {
 		return tickMsg{t}
 	})
 }
-
-type tickMsg struct{ time.Time }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -259,7 +259,7 @@ func main() {
 		})
 		streams[i] = &Stream{
 			Name:    name,
-			URL:     u.RtspUrl,
+			Url:     u.RtspUrl,
 			Inst:    inst,
 			Hub:     inst.GetHub(),
 			Handler: inst.Handler(),
@@ -304,12 +304,12 @@ func main() {
 	})
 
 	app.Get("/", func(c fiber.Ctx) error {
-		return c.Type("html").Send(indexHTML)
+		return c.Type("html").Send(indexHtml)
 	})
 
 	app.Get("/index.css", func(c fiber.Ctx) error {
 		c.Set("Content-Type", "text/css")
-		return c.Send(indexCSS)
+		return c.Send(indexCss)
 	})
 
 	// Start fiber server
@@ -318,7 +318,7 @@ func main() {
 		log.Printf("HTTP server listening on http://localhost%s", addr)
 		log.Printf("Streams available:")
 		for i, s := range streams {
-			log.Printf("  - /stream/no/%d (%s) -> %s", i, s.Name, s.URL)
+			log.Printf("  - /stream/no/%d (%s) -> %s", i, s.Name, s.Url)
 		}
 		if err := app.Listen(addr); err != nil {
 			log.Printf("HTTP: %v", err)

@@ -1,6 +1,7 @@
 package webrtp
 
 import (
+	"encoding/binary"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,6 +12,7 @@ type Hub struct {
 	clients     map[chan []byte]struct{}
 	init        []byte
 	bytesRecv   atomic.Uint64
+	frameNo     atomic.Uint64
 	clientCount atomic.Int32
 	startTime   time.Time
 	ready       atomic.Bool
@@ -74,7 +76,13 @@ func (r *Hub) Unsubscribe(ch chan []byte) {
 }
 
 func (r *Hub) Broadcast(data []byte) {
+	frameNo := r.frameNo.Add(1)
 	r.bytesRecv.Add(uint64(len(data)))
+
+	frameData := make([]byte, 8+len(data))
+	binary.BigEndian.PutUint64(frameData[:8], frameNo)
+	copy(frameData[8:], data)
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for ch := range r.clients {
@@ -83,7 +91,7 @@ func (r *Hub) Broadcast(data []byte) {
 		default:
 		}
 		select {
-		case ch <- data:
+		case ch <- frameData:
 		default:
 		}
 	}
@@ -100,6 +108,7 @@ type StreamStats struct {
 	Width       int           `json:"width"`
 	Height      int           `json:"height"`
 	Framerate   float64       `json:"framerate"`
+	FrameNo     uint64        `json:"frameNo"`
 	ClientCount int32         `json:"clientCount"`
 	BytesRecv   uint64        `json:"bytesRecv"`
 	Bitrate     float64       `json:"bitrateKbps"`
@@ -108,6 +117,7 @@ type StreamStats struct {
 
 func (r *Hub) GetStats(name string) StreamStats {
 	bytes := r.bytesRecv.Load()
+	frameNo := r.frameNo.Load()
 	elapsed := time.Since(r.startTime)
 	var bitrate float64
 	if elapsed > 0 {
@@ -126,6 +136,7 @@ func (r *Hub) GetStats(name string) StreamStats {
 		Width:       width,
 		Height:      height,
 		Framerate:   frameRate,
+		FrameNo:     frameNo,
 		ClientCount: r.clientCount.Load(),
 		BytesRecv:   bytes,
 		Bitrate:     bitrate,
