@@ -183,7 +183,7 @@ func (m *Model) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		whiteStyle.Render("┌────────────────────────────────────────┐"),
-		whiteStyle.Render("│ WebRTP Steamer                         │"),
+		whiteStyle.Render("│ WebRTP Streamer                        │"),
 		lipgloss.JoinHorizontal(lipgloss.Left,
 			whiteStyle.Render("│"),
 			dimStyle.Render(" © 2026 Connected Tech Co.,Ltd.         "),
