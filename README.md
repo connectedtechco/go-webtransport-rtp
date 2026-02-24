@@ -12,19 +12,24 @@ Golang library for streaming RTP packet from RTSP source directly to web in real
 
 Download the latest release binary from [GitHub Releases](https://github.com/connectedtechco/go-webrtp/releases):
 
-```bash
-# macOS (Apple Silicon)
-curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-arm64
-chmod +x webrtp
-
-# macOS (Intel)
-curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-amd64
-chmod +x webrtp
-
-# Linux
-curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-linux-amd64
-chmod +x webrtp
-```
+- macOS (Apple Silicon)
+   ```bash
+   curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-arm64
+   chmod +x webrtp
+   ./webrtp -i -c config.yml
+   ```
+  
+- Linux (x64)
+   ```bash
+   curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-linux-amd64
+   chmod +x webrtp
+    ./webrtp -i -c config.yml
+   ```
+- Windows (x64)
+   ```powershell
+   # Windows (x64)
+   Invoke-WebRequest -Uri "https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-windows-amd64.exe" -OutFile webrtp.exe
+   ```
 
 ### Run Server
 
