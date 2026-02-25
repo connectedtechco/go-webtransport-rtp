@@ -8,19 +8,22 @@ import (
 )
 
 type Hub struct {
-	mu          sync.RWMutex
-	clients     map[chan []byte]struct{}
-	init        []byte
-	bytesRecv   atomic.Uint64
-	frameNo     atomic.Uint64
-	clientCount atomic.Int32
-	ready       atomic.Bool
-	readyAt     atomic.Pointer[time.Time]
-	lastFrameAt atomic.Pointer[time.Time]
-	codec       string
-	width       int
-	height      int
-	frameRate   float64
+	mu            sync.RWMutex
+	clients       map[chan []byte]struct{}
+	init          []byte
+	bytesTotal    atomic.Uint64
+	bytesCurrent  atomic.Uint64
+	framesCurrent atomic.Uint64
+	cycleAt       atomic.Pointer[time.Time]
+	frameNo       atomic.Uint64
+	clientCount   atomic.Int32
+	ready         atomic.Bool
+	readyAt       atomic.Pointer[time.Time]
+	lastPacketAt  atomic.Pointer[time.Time]
+	codec         string
+	width         int
+	height        int
+	frameRate     float64
 }
 
 func NewHub() *Hub {
@@ -42,14 +45,17 @@ func (r *Hub) SetInit(data []byte) {
 func (r *Hub) Reset() {
 	r.ready.Store(false)
 	r.readyAt.Store(nil)
-	r.lastFrameAt.Store(nil)
+	r.lastPacketAt.Store(nil)
+	r.bytesCurrent.Store(0)
+	r.framesCurrent.Store(0)
+	r.cycleAt.Store(nil)
 	r.mu.Lock()
 	r.init = nil
 	r.mu.Unlock()
 }
 
 func (r *Hub) IsReceivingFrames() bool {
-	lastFrameAt := r.lastFrameAt.Load()
+	lastFrameAt := r.lastPacketAt.Load()
 	if lastFrameAt == nil {
 		return false
 	}
@@ -96,10 +102,22 @@ func (r *Hub) Unsubscribe(ch chan []byte) {
 
 func (r *Hub) Broadcast(data []byte) {
 	frameNo := r.frameNo.Add(1)
-	r.bytesRecv.Add(uint64(len(data)))
+	size := uint64(len(data))
+	r.bytesTotal.Add(size)
+
+	// Start new 1-second window if needed or if previous window expired
+	cycleAt := r.cycleAt.Load()
+	if cycleAt == nil || time.Since(*cycleAt) >= time.Second {
+		r.bytesCurrent.Store(0)
+		r.framesCurrent.Store(0)
+		now := time.Now()
+		r.cycleAt.Store(&now)
+	}
+	r.bytesCurrent.Add(size)
+	r.framesCurrent.Add(1)
 
 	now := time.Now()
-	r.lastFrameAt.Store(&now)
+	r.lastPacketAt.Store(&now)
 
 	frameData := make([]byte, 8+len(data))
 	binary.BigEndian.PutUint64(frameData[:8], frameNo)
@@ -138,22 +156,34 @@ type StreamStats struct {
 }
 
 func (r *Hub) GetStats(name string) StreamStats {
-	bytes := r.bytesRecv.Load()
+	bytesTotal := r.bytesTotal.Load()
 	frameNo := r.frameNo.Load()
 	readyAt := r.readyAt.Load()
+	lastPacketAt := r.lastPacketAt.Load()
+
+	bytesCurrent := r.bytesCurrent.Load()
+	framesCurrent := r.framesCurrent.Load()
+
 	var elapsed time.Duration
 	var bitrate float64
+	var frameRate float64
 	if readyAt != nil {
 		elapsed = time.Since(*readyAt)
-		if elapsed > 0 {
-			bitrate = float64(bytes) * 8 / elapsed.Seconds() / 1000
+	}
+	if lastPacketAt != nil && bytesCurrent > 0 {
+		cycleAt := r.cycleAt.Load()
+		if cycleAt != nil {
+			passed := time.Since(*cycleAt).Seconds()
+			if passed > 0 {
+				bitrate = float64(bytesCurrent) * 8 / passed / 1000
+				frameRate = float64(framesCurrent) / passed
+			}
 		}
 	}
 	r.mu.RLock()
 	codec := r.codec
 	width := r.width
 	height := r.height
-	frameRate := r.frameRate
 	r.mu.RUnlock()
 	return StreamStats{
 		Name:        name,
@@ -164,7 +194,7 @@ func (r *Hub) GetStats(name string) StreamStats {
 		Framerate:   frameRate,
 		FrameNo:     frameNo,
 		ClientCount: r.clientCount.Load(),
-		BytesRecv:   bytes,
+		BytesRecv:   bytesTotal,
 		Bitrate:     bitrate,
 		Uptime:      elapsed,
 	}
