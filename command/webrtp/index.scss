@@ -16,7 +16,7 @@
 
 html, body {
     width: 100%;
-    height: 100%;
+    height: 100vh;
     overflow: hidden;
 }
 
@@ -36,6 +36,8 @@ body {
     gap: 1px;
     background: var(--border);
     padding: 1px;
+    width: 100%;
+    height: 100%;
 }
 
 .cell {
@@ -43,6 +45,9 @@ body {
     background: #000;
     overflow: hidden;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &:hover {
         .cell-overlay {

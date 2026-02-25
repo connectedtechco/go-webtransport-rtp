@@ -229,16 +229,38 @@
     const grid = document.getElementById('grid');
     const pagination = document.getElementById('pagination');
 
-    function calcGridCols() {
+    function calcGridCols(streamCount) {
         const w = window.innerWidth;
         const h = window.innerHeight;
-        const cells = w * h;
-        if (cells >= 1920 * 1080 * 9) return 3;
-        return 2;
+        const pixels = w * h;
+        const ratio = w / h;
+
+        // Base columns from pixel count
+        let cols;
+        if (pixels >= 2000000) {
+            cols = 4;
+        } else if (pixels >= 900000) {
+            cols = 3;
+        } else if (pixels >= 400000) {
+            cols = 2;
+        } else {
+            cols = 1;
+        }
+
+        // Adjust based on aspect ratio (wider = more cols, taller = fewer)
+        if (ratio > 1.5) {
+            cols = Math.min(cols + 1, 5);
+        } else if (ratio < 0.7) {
+            cols = Math.max(cols - 1, 1);
+        }
+
+        // Limit by actual stream count (square grid)
+        const maxCols = Math.ceil(Math.sqrt(streamCount));
+        return Math.min(cols, maxCols);
     }
 
     function getGridSize() {
-        const cols = calcGridCols();
+        const cols = calcGridCols(streams.length);
         return cols * cols;
     }
 
@@ -259,7 +281,7 @@
         players = {};
 
         grid.innerHTML = '';
-        const cols = calcGridCols();
+        const cols = calcGridCols(streams.length);
         const perPage = cols * cols;
         const start = currentPage * perPage;
 
