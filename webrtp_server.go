@@ -3,6 +3,7 @@ package webrtp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -26,16 +27,39 @@ func (r *Instance) Start(addr string) error {
 }
 
 func (r *Instance) Connect() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	r.cancel = cancel
+	for {
+		r.hub.Reset()
 
-	conn, err := r.connectRtsp(ctx)
-	if err != nil {
-		cancel()
-		return fmt.Errorf("rtsp connect: %w", err)
+		ctx, cancel := context.WithCancel(context.Background())
+		r.cancel = cancel
+
+		conn, err := r.connectRtsp(ctx)
+		if err != nil {
+			r.logger.Printf("rtsp connect failed: %v", err)
+			cancel()
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		r.conn = conn
+
+		// Wait for connection to drop or frame timeout
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				r.logger.Printf("rtsp connection dropped, reconnecting")
+				goto reconnect
+			case <-ticker.C:
+				if r.hub.ready.Load() && !r.hub.IsReceivingFrames() {
+					r.logger.Printf("no frame received for 1s, reconnecting")
+					cancel()
+					goto reconnect
+				}
+			}
+		}
+	reconnect:
 	}
-	r.conn = conn
-	return nil
 }
 
 func (r *Instance) Stop() error {

@@ -14,8 +14,9 @@ type Hub struct {
 	bytesRecv   atomic.Uint64
 	frameNo     atomic.Uint64
 	clientCount atomic.Int32
-	startTime   time.Time
 	ready       atomic.Bool
+	readyAt     atomic.Pointer[time.Time]
+	lastFrameAt atomic.Pointer[time.Time]
 	codec       string
 	width       int
 	height      int
@@ -24,8 +25,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		clients:   make(map[chan []byte]struct{}),
-		startTime: time.Now(),
+		clients: make(map[chan []byte]struct{}),
 	}
 }
 
@@ -35,6 +35,25 @@ func (r *Hub) SetInit(data []byte) {
 	copy(r.init, data)
 	r.mu.Unlock()
 	r.ready.Store(true)
+	now := time.Now()
+	r.readyAt.Store(&now)
+}
+
+func (r *Hub) Reset() {
+	r.ready.Store(false)
+	r.readyAt.Store(nil)
+	r.lastFrameAt.Store(nil)
+	r.mu.Lock()
+	r.init = nil
+	r.mu.Unlock()
+}
+
+func (r *Hub) IsReceivingFrames() bool {
+	lastFrameAt := r.lastFrameAt.Load()
+	if lastFrameAt == nil {
+		return false
+	}
+	return time.Since(*lastFrameAt) < time.Second
 }
 
 func (r *Hub) SetInfo(codec string, width, height int, frameRate float64) {
@@ -79,6 +98,9 @@ func (r *Hub) Broadcast(data []byte) {
 	frameNo := r.frameNo.Add(1)
 	r.bytesRecv.Add(uint64(len(data)))
 
+	now := time.Now()
+	r.lastFrameAt.Store(&now)
+
 	frameData := make([]byte, 8+len(data))
 	binary.BigEndian.PutUint64(frameData[:8], frameNo)
 	copy(frameData[8:], data)
@@ -118,10 +140,14 @@ type StreamStats struct {
 func (r *Hub) GetStats(name string) StreamStats {
 	bytes := r.bytesRecv.Load()
 	frameNo := r.frameNo.Load()
-	elapsed := time.Since(r.startTime)
+	readyAt := r.readyAt.Load()
+	var elapsed time.Duration
 	var bitrate float64
-	if elapsed > 0 {
-		bitrate = float64(bytes) * 8 / elapsed.Seconds() / 1000
+	if readyAt != nil {
+		elapsed = time.Since(*readyAt)
+		if elapsed > 0 {
+			bitrate = float64(bytes) * 8 / elapsed.Seconds() / 1000
+		}
 	}
 	r.mu.RLock()
 	codec := r.codec

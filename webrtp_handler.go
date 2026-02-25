@@ -22,11 +22,29 @@ func (r *Instance) HandleWebsocket(conn *websocket.Conn) {
 	defer conn.Close()
 	r.logger.Printf("client connected: %s", conn.RemoteAddr())
 
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}()
+
 	initData := r.hub.GetInit()
-	if initData == nil {
-		r.logger.Printf("stream not ready, closing %s", conn.RemoteAddr())
-		return
+	for initData == nil {
+		r.logger.Printf("stream not ready, waiting %s", conn.RemoteAddr())
+		select {
+		case <-time.After(100 * time.Millisecond):
+			initData = r.hub.GetInit()
+		case <-done:
+			r.logger.Printf("client disconnected while waiting: %s", conn.RemoteAddr())
+			return
+		}
 	}
+
 	_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if err := conn.WriteMessage(websocket.BinaryMessage, initData); err != nil {
 		return
