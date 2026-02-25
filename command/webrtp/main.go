@@ -58,12 +58,14 @@ type Stream struct {
 type tickMsg struct{ time.Time }
 
 type Model struct {
-	streams  []*Stream
-	page     int
-	pageSize int
-	stats    []webrtp.StreamStats
-	logs     []string
-	quitting bool
+	streams      []*Stream
+	page         int
+	pageSize     int
+	stats        []webrtp.StreamStats
+	logs         []string
+	quitting     bool
+	windowWidth  int
+	windowHeight int
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -74,6 +76,12 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.windowWidth = msg.Width
+		m.windowHeight = msg.Height
+		if msg.Height > 18 {
+			m.pageSize = msg.Height - 18
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -150,6 +158,13 @@ func (m *Model) View() string {
 		})
 	}
 
+	// Calculate table height based on window size
+	// Layout: header(5) + logs(10) + nav(3) = ~18 fixed lines
+	tableHeight := 10 // default
+	if m.windowHeight > 18 {
+		tableHeight = m.windowHeight - 18
+	}
+
 	t := table.New(
 		table.WithColumns([]table.Column{
 			{Title: "#", Width: 3},
@@ -165,6 +180,7 @@ func (m *Model) View() string {
 			{Title: "Uptime", Width: 10},
 		}),
 		table.WithRows(rows),
+		table.WithHeight(tableHeight),
 		table.WithFocused(false),
 	)
 

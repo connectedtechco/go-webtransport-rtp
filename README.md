@@ -16,25 +16,22 @@ Download the latest release binary from [GitHub Releases](https://github.com/con
    ```bash
    curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-darwin-arm64
    chmod +x webrtp
-   ./webrtp -i -c config.yml
    ```
   
 - Linux (x64)
    ```bash
    curl -L -o webrtp https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-linux-amd64
    chmod +x webrtp
-    ./webrtp -i -c config.yml
    ```
 - Windows (x64)
    ```powershell
-   # Windows (x64)
    Invoke-WebRequest -Uri "https://github.com/connectedtechco/go-webrtp/releases/latest/download/webrtp-windows-amd64.exe" -OutFile webrtp.exe
    ```
 
 ### Run Server
 
 ```bash
-./webrtp -c config.yml
+./webrtp -i -c config.yml
 ```
 
 ### Command Options

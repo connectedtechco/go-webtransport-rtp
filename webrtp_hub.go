@@ -12,8 +12,8 @@ type Hub struct {
 	clients       map[chan []byte]struct{}
 	init          []byte
 	bytesTotal    atomic.Uint64
-	bytesBuckets  *[2]*atomic.Uint64
-	framesBuckets *[2]*atomic.Uint64
+	bytesBuckets  [2]*atomic.Uint64
+	framesBuckets [2]*atomic.Uint64
 	frameNo       atomic.Uint64
 	clientCount   atomic.Int32
 	ready         atomic.Bool
@@ -28,8 +28,8 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		bytesBuckets:  &[2]*atomic.Uint64{new(atomic.Uint64), new(atomic.Uint64)},
-		framesBuckets: &[2]*atomic.Uint64{new(atomic.Uint64), new(atomic.Uint64)},
+		bytesBuckets:  [2]*atomic.Uint64{new(atomic.Uint64), new(atomic.Uint64)},
+		framesBuckets: [2]*atomic.Uint64{new(atomic.Uint64), new(atomic.Uint64)},
 		clients:       make(map[chan []byte]struct{}),
 	}
 }
