@@ -170,7 +170,7 @@ func (r *Hub) GetStats(name string) StreamStats {
 	readyAt := r.readyAt.Load()
 	lastPacketAt := r.lastPacketAt.Load()
 
-	// Read from other bucket (previous complete second)
+	// Read from other completed bucket
 	idx := (r.cycleIdx() + 1) % 2
 	bytesCurrent := r.bytesBuckets[idx].Load()
 	framesCurrent := r.framesBuckets[idx].Load()

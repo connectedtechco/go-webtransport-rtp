@@ -37,7 +37,8 @@ var CLI struct {
 }
 
 type Config struct {
-	Upstreams []*Upstream `yaml:"upstreams"`
+	TelemetryServiceName *string     `yaml:"telemetryServiceName"`
+	Upstreams            []*Upstream `yaml:"upstreams"`
 }
 
 type Upstream struct {
@@ -91,6 +92,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, s := range m.streams {
 			m.stats = append(m.stats, s.Hub.GetStats(s.Name))
 		}
+		MetricsUpdate(m.streams)
 		return m, tea.Tick(time.Second, func(t time.Time) tea.Msg {
 			return tickMsg{t}
 		})
@@ -307,6 +309,7 @@ func main() {
 			streamStats.Name = s.Name
 			stats[i] = &streamStats
 		}
+		MetricsUpdate(streams)
 		return c.JSON(webrtp.Status{Streams: stats})
 	})
 
@@ -318,6 +321,17 @@ func main() {
 		c.Set("Content-Type", "text/css")
 		return c.Send(indexCss)
 	})
+
+	// Init metrics
+	serviceName := "webrtp"
+	if cfg.TelemetryServiceName != nil && *cfg.TelemetryServiceName != "" {
+		serviceName = *cfg.TelemetryServiceName
+	}
+	if err := MetricsInit(serviceName); err != nil {
+		log.Printf("metrics init: %v", err)
+	} else {
+		MetricsRoute(app)
+	}
 
 	// Start fiber server
 	go func() {
